@@ -6,45 +6,62 @@ import org.jsoup.nodes.Element;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class Crawler {
+public class Crawler implements Runnable {
+    private static final int MAX_DEPTH = 3;
+    private Thread thread;
+    private String link;
+    private ArrayList<String> visitedLinks = new ArrayList<String>();
+    private int ID;
 
-    public static void main(String[] args) {
-        String url = "https://www.poewiki.net/wiki/Path_of_Exile_Wiki";
-        crawl(0, url, new ArrayList<String>());
+    public Crawler(String link, int num) {
+        this.link = link;
+        this.ID = num;
+
+        this.thread = new Thread(this);
+        this.thread.start();
     }
 
-    private static void crawl(int level, String url, ArrayList<String> visited) {
-        if(level < 2) {
-            Document document = request(url, visited);
-            System.out.println("Level: " + level);
+    @Override
+    public void run() {
+        crawl(0, this.link);
+    }
 
-            if(document != null) {
-                for(Element link : document.select("a[href]")) {
+    private void crawl(int level, String url) {
+        if (level < MAX_DEPTH) {
+            Document document = request(url);
+
+            if (document != null) {
+                for (Element link : document.select("a[href^=/]")) {
                     String next_link = link.absUrl("href");
-                    if(!visited.contains(next_link)) {
-                        crawl(level++, next_link, visited);
+                    if (!visitedLinks.contains(next_link)) {
+                        // System.out.println("ID: " + ID + " " + next_link);
+                        crawl(level++, next_link);
                     }
                 }
             }
         }
     }
 
-    private static Document request(String url, ArrayList<String> visited) {
-        try {
-            Connection connection = Jsoup.connect(url);
-            Document document = connection.get();
+    private Document request(String url) {
+       try {
+           Connection connection = Jsoup.connect(url);
+           Document document = connection.get();
 
-            if(connection.response().statusCode() == 200) {
-                System.out.println("Link: " + url);
-                System.out.println(document.title());
-                visited.add(url);
+           if (connection.response().statusCode() == 200) {
+               String title = document.title();
+               System.out.println("ID: " + ID + " URL: " + url);
 
-                return document;
-            }
-            return null;
-        }
-        catch(IOException e) {
-            return null;
-        }
+               visitedLinks.add(url);
+               return document;
+           }
+           return null;
+       }
+       catch (IOException e) {
+           return null;
+       }
+    }
+
+    public Thread getThread() {
+        return thread;
     }
 }
