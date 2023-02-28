@@ -5,17 +5,16 @@ import org.jsoup.nodes.Element;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.BlockingQueue;
 
 public class Crawler implements Runnable {
-    private static final int MAX_DEPTH = 3;
     private Thread thread;
     private String link;
-    private ArrayList<String> visitedLinks = new ArrayList<String>();
-    private int ID;
+    public BlockingQueue<String> linksQueue;
 
-    public Crawler(String link, int num) {
-        this.link = link;
-        this.ID = num;
+    public Crawler(String url, BlockingQueue<String> queue) {
+        this.link = url;
+        this.linksQueue = queue;
 
         this.thread = new Thread(this);
         this.thread.start();
@@ -23,20 +22,21 @@ public class Crawler implements Runnable {
 
     @Override
     public void run() {
-        crawl(0, this.link);
+        crawl();
     }
 
-    private void crawl(int level, String url) {
-        if (level < MAX_DEPTH) {
-            Document document = request(url);
+    private void crawl() {
+        String next_link = this.link;
+
+        while (next_link != null) {
+            Document document = request(next_link);
+            next_link = null;
 
             if (document != null) {
-                for (Element link : document.select("a[href^=/]")) {
-                    String next_link = link.absUrl("href");
-                    if (!visitedLinks.contains(next_link)) {
-                        // System.out.println("ID: " + ID + " " + next_link);
-                        crawl(level++, next_link);
-                    }
+                Element link = document.select("li.next").select("a[href]").first();
+
+                if (link != null) {
+                    next_link = link.absUrl("href");
                 }
             }
         }
@@ -48,15 +48,14 @@ public class Crawler implements Runnable {
            Document document = connection.get();
 
            if (connection.response().statusCode() == 200) {
-               String title = document.title();
-               System.out.println("ID: " + ID + " URL: " + url);
+               System.out.println(" URL: " + url);
 
-               visitedLinks.add(url);
+               linksQueue.put(url);
                return document;
            }
            return null;
        }
-       catch (IOException e) {
+       catch (IOException | InterruptedException e) {
            return null;
        }
     }
