@@ -10,9 +10,9 @@ import java.util.concurrent.BlockingQueue;
 public class Crawler implements Runnable {
     private Thread thread;
     private String link;
-    public BlockingQueue<String> linksQueue;
+    public BlockingQueue<Document> linksQueue;
 
-    public Crawler(String url, BlockingQueue<String> queue) {
+    public Crawler(String url, BlockingQueue<Document> queue) {
         this.link = url;
         this.linksQueue = queue;
 
@@ -33,7 +33,7 @@ public class Crawler implements Runnable {
             next_link = null;
 
             if (document != null) {
-                Element link = document.select("li.next").select("a[href]").first();
+                Element link = document.select("li.page-item.next a[href]").first();
 
                 if (link != null) {
                     next_link = link.absUrl("href");
@@ -48,9 +48,9 @@ public class Crawler implements Runnable {
            Document document = connection.get();
 
            if (connection.response().statusCode() == 200) {
-               System.out.println(" URL: " + url);
+               // System.out.println(" URL: " + url);
 
-               linksQueue.put(url);
+               linksQueue.put(document);
                return document;
            }
            return null;
@@ -61,6 +61,6 @@ public class Crawler implements Runnable {
     }
 
     public Thread getThread() {
-        return thread;
+        return this.thread;
     }
 }
